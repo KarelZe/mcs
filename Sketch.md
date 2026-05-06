@@ -25,12 +25,42 @@
     - *historical sequences MCS* has the lowest failure rates, hence, most optimistic predictions.
 - MCS is a means to manage sequence of returns risk. It means, that the specific order of fluctuating monthly and yearly returns during an observation period affect the total return and hence the total worth of the portfolio, if money is deposited or withdrawn from the portfolio. Only for portfolios without any withdrawals or deposits the sequence-of-return risk is irrelevant. For retirement accounts this is definitely not the case.
 - Isn't there the 4 % rule? Yes, there is. It's overly optimistic these days and has tight assumptions (e.g., 50 % / 50 % portfolio composed of stocks and bonds, US historical data used for study must be considered an edge case). For details see: https://download.ssrn.com/2026/3/3/6336998.pdf.
+- From Alexander Carol for VaR: But in the historical VaR model, simulations of portfolio returns are based on a set of historical asset or risk factor returns. Historical VaR can be a very powerful tool for forecasting extreme losses, but a significant challenge to implementing an historical VaR model is the derivation of an empirical portfolio returns distribution that captures the tails of the distribution adequately. The aim of kernel fitting is to derive a smooth curve from a random sample that provides the best possible representation of the probability density of the random variable. In other words, kernel fitting is a way to infer the population density from an empirical density function.
+
 
 ## classical MCS
+
+** from kommer:**
 
 - *classical MCS* assumes normally distributed returns. Isn't the normality assumption flawed and overoptimistic, as it doesn't consider *fat tails* or *black swans*? For *black swans* see https://en.wikipedia.org/wiki/Black_swan_theory and books by Nasim Taleb.
 - Research has shown that breaking the *normality assumption* would rather lead to more optimistic results and has hence adverse effects for our objective. For details see: https://www.kitces.com/blog/monte-carlo-analysis-risk-fat-tails-vs-safe-withdrawal-rates-rolling-historical-returns/
 
+**but:**
+
+Came to my mind while reading I.3.3.12 Kernels in Alexander.
+
+In reality, markets  have "Fat Tails" (Kurtosis). 
+   * The Normal Model: Predicts that a "6-sigma" event (like the
+     2008 crash) should happen once every few billion years.
+   * The Reality: These events happen once or twice a decade.
+   * The Alexander Point: If you use a historical sample directly,
+     it’s too "jagged." If you use a Normal curve, it’s too
+     "thin." Kernel fitting (KDE) is the middle ground that
+     creates a smooth, continuous distribution that actually
+     respects those historical extremes.
+
+How to model fat tails:
+
+   1. The "Easy" Math Fix (Student's t-distribution): Instead of
+      Normal, use a Student’s t-distribution with low "degrees of
+      freedom" (e.g., 3 to 5). This automatically adds the "fat
+      tails" Alexander is worried about without needing a massive
+      historical dataset.
+   2. The Alexander Fix (KDE Bootstrapping): If you have a file of
+      historical returns for your assets, we can replace
+      np.random.normal with a Scipy gaussian_kde sampler. This
+      will "infer the population density" from your data as she
+      describes.
 
 ## Input parameters
 
@@ -75,7 +105,6 @@ Example from https://gerd-kommer.de/blog/monte-carlo-simulation-als-prognoseverf
 Arithmetic returns (mean annual return) should be used as inputs for Monte Carlo simulations, not geometric returns (CAGR), to avoid double-counting "volatility drag". The simulation randomizes yearly returns, and the compounding effect naturally generates the necessary volatility, reducing the effective return from the arithmetic average to a lower, more realistic compounded result.Why Arithmetic: It represents the expected return for any single future year. (https://support.planwithvoyant.com/hc/en-us/articles/40766720226971-Understanding-Arithmetic-vs-Geometric-Mean-US#:~:text=For%20Monte%20Carlo%20simulations%2C%20where,between%20arithmetic%20and%20geometric%20values.) Why Not Geometric: It already accounts for past volatility (compounding), which the simulation will calculate again, resulting in artificially low projections.Key Consideration: The simulation handles sequence-of-returns risk, meaning it models how early losses affect long-term portfolio survival.
 
 
-
 ## considering inflation
 
 ## construction more risky portfolios
@@ -85,6 +114,42 @@ Arithmetic returns (mean annual return) should be used as inputs for Monte Carlo
 ## a word about pseudo, random numbers
 
 see chapter I.5.7.1 Random Numbers in Alexander. Instead of Mersenne-Twister, we use PCG64 rng algorithm, which is faster. Marsenne-Twister has a high periodicity -> long cycle before the random sequence repeats For MT the period is $2^{19937}-1$, which is massive and more than enough for most portfolio simulations.
+
+# Pitfalls in Monte Carlo simulation
+
+see handbook on mcs (pp. 45)
+
+## Background on Sequence-of-Return risk
+
+1. The "Academic Gold Standard"
+  "The Calculus of Retirement Income" by Moshe Milevsky
+   * The Vibe: This is the most mathematically rigorous book on
+     the list. If you like Carol Alexander’s work, you will
+     appreciate Milevsky. 
+   * Why it’s great: He treats retirement not as a "savings"
+     problem but as an "actuarial" problem. He uses stochastic
+     calculus to explain why the variance of returns during the
+     withdrawal phase is fundamentally different from the variance
+     during the accumulation phase.
+2. The "Behavioral & Historical" Perspective
+  "The Four Pillars of Investing" by William Bernstein
+   * The Vibe: Historical, narrative-driven, but backed by deep
+     data.
+   * Why it’s great: Bernstein explains that SoRR is essentially a
+     "collision" between market volatility and human mortality. He
+     provides the historical context of "lost decades" (like
+     1929-1939 or 2000-2010) to show exactly how a bad sequence
+     destroys a life standard.
+3. The "Professional/Institutional" View
+  "Asset Management: A Systematic Approach to Factor Investing" by
+  Andrew Ang
+   * The Vibe: Institutional-grade textbook.
+   * Why it’s great: Chapter 18 (on "Liquidating Portfolios")
+     provides a very high-level mathematical treatment of
+     decumulation. It’s excellent if you want to understand how
+     institutions manage the "sequence risk" of pension funds,
+     which is exactly what an individual retirement portfolio is.
+
 
 ## Resources
 - high-level overview https://www.gerd-kommer-invest.de/wp-content/uploads/Elitebrief-Monte-Carlo-Simulation-in-der-Finanzplanung.pdf
