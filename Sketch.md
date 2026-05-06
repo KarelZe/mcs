@@ -62,12 +62,17 @@ Example from https://gerd-kommer.de/blog/monte-carlo-simulation-als-prognoseverf
 - initial net worth: 1,000,000
 - number of trials: unknown? But in book Kommer mentions 1,000 or 10,000 trials are mostly sufficient in financial context
 - life expectancy. partners have an identical life expectancy: for examples, where partners have a different life expectancy, see Kommer book p. 189
-- deposit, withdrawal and rebalance frequency: unknown. Probably yearly. Somewhere in his book Kommer writes that it makes calculations more precise but also more computationally expensive. Makes sense.
+- deposit, withdrawal and rebalance frequency: unknown. Probably yearly, as all numbers are reported annually. Somewhere in his book Kommer writes that it makes calculations more precise but also more computationally expensive. Makes sense. It's also unclear when withdrawals are done, at beginning of year, end of year, or every month?
+- Beginning-of-year withdrawal is the conservative choice — you reduce the base before it compounds, which slightly lowers your median outcome and raises the failure rate End-of-year withdrawal would give slightly more optimistic numbers. 
 
 ## withdrawals aren't static
 
 - A household would typically adjust their withdrawal rate i.e., cut their spendings after a year of poor returns. Hence, in reality we'd often face situations with a *dynamic withdrawal rate*. (Kommer book; 2001) For *Plan B* ideas, see Kommer book.
 - It might be wise to consider dynamic withdrawal rates. 
+
+## geometrics vs. arithmetic returns
+
+Arithmetic returns (mean annual return) should be used as inputs for Monte Carlo simulations, not geometric returns (CAGR), to avoid double-counting "volatility drag". The simulation randomizes yearly returns, and the compounding effect naturally generates the necessary volatility, reducing the effective return from the arithmetic average to a lower, more realistic compounded result.Why Arithmetic: It represents the expected return for any single future year. (https://support.planwithvoyant.com/hc/en-us/articles/40766720226971-Understanding-Arithmetic-vs-Geometric-Mean-US#:~:text=For%20Monte%20Carlo%20simulations%2C%20where,between%20arithmetic%20and%20geometric%20values.) Why Not Geometric: It already accounts for past volatility (compounding), which the simulation will calculate again, resulting in artificially low projections.Key Consideration: The simulation handles sequence-of-returns risk, meaning it models how early losses affect long-term portfolio survival.
 
 ## considering inflation
 
@@ -96,6 +101,10 @@ x = torch.ones(5, device=device)
 Project seems to be no longer actively maintained (see [discussion](https://github.com/jax-ml/jax/discussions/34648)).
 
 **link:** https://developer.apple.com/metal/jax/
+
+**pure python:**
+
+probably enough to do in pure python, as runtime doesn't matter match and calculation is fairly fast.
 
 ## geometric returns to arithmetic returns
 
