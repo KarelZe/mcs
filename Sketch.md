@@ -55,7 +55,7 @@ Example from https://gerd-kommer.de/blog/monte-carlo-simulation-als-prognoseverf
 
 *Parameters:*
 - savings period: 10 years, withdrawal period 30 years
-- deposits over course of 10 years: 50k, withdrawals in 10 years after that 
+- deposits over course of 10 years: 50k per year, withdrawals in 10 years after that  
 - remaining life expectancy of couple: 40 years
 - real, arithmetic return of portfolio 2.9 % and std. dev. of returns 12.2 %. For *geometric returns* of different asset classes, see Kommer book p. 192. Arithmetic returns are roughly 1 % higher.
 - consideration of inflation: not necessary, as we use *arithmetic, real returns*
@@ -74,17 +74,24 @@ Example from https://gerd-kommer.de/blog/monte-carlo-simulation-als-prognoseverf
 
 Arithmetic returns (mean annual return) should be used as inputs for Monte Carlo simulations, not geometric returns (CAGR), to avoid double-counting "volatility drag". The simulation randomizes yearly returns, and the compounding effect naturally generates the necessary volatility, reducing the effective return from the arithmetic average to a lower, more realistic compounded result.Why Arithmetic: It represents the expected return for any single future year. (https://support.planwithvoyant.com/hc/en-us/articles/40766720226971-Understanding-Arithmetic-vs-Geometric-Mean-US#:~:text=For%20Monte%20Carlo%20simulations%2C%20where,between%20arithmetic%20and%20geometric%20values.) Why Not Geometric: It already accounts for past volatility (compounding), which the simulation will calculate again, resulting in artificially low projections.Key Consideration: The simulation handles sequence-of-returns risk, meaning it models how early losses affect long-term portfolio survival.
 
+
+
 ## considering inflation
 
 ## construction more risky portfolios
 
 ## Tasks
 
+## a word about pseudo, random numbers
+
+see chapter I.5.7.1 Random Numbers in Alexander. Instead of Mersenne-Twister, we use PCG64 rng algorithm, which is faster. Marsenne-Twister has a high periodicity -> long cycle before the random sequence repeats For MT the period is $2^{19937}-1$, which is massive and more than enough for most portfolio simulations.
 
 ## Resources
 - high-level overview https://www.gerd-kommer-invest.de/wp-content/uploads/Elitebrief-Monte-Carlo-Simulation-in-der-Finanzplanung.pdf
 - more detailed overview how to calculate + cross-check for implementation. https://gerd-kommer.de/blog/monte-carlo-simulation-als-prognoseverfahren/. Seems very similar to the book "Souverän investieren vor und im Ruhestand"
 - cuda + python-based monte carlo simulation: https://github.com/ToastierP/monte_carlo_sim/blob/main/MonteCarlo.py
+- useful book: Handbook in Monte Carlo Simulation: Applications in Financial Engineering, Risk Management, and Economics
+- most relevant book: Market Risk Analysis Volume I: Quantitative Methods in Finance
 
 ## Mac Implementation
 
@@ -114,3 +121,62 @@ Geometric Return ($r_g$): $0.06$
 Variance ($\sigma^2$): $0.18^2 = 0.0324$
 Adjustment: $0.0324 / 2 = 0.0162$ (or 1.62%)
 Estimated Arithmetic Return: $0.06 + 0.0162 =$ 7.62%
+
+## Generating Time Series of Lognormal Asset Prices
+ 
+(from Alexander)
+
+In this subsection we describe how to simulate a time series of asset prices that follow a geometric Brownian motion,
+
+$$
+\frac{d S(t)}{S(t)}=\mu d t+\sigma d W(t) .
+$$
+
+Geometric Brownian motion was introduced in Section I.1.4.5, and we derived the discrete time equivalent of geometric Brownian motion in Section I.3.7.3. Using Itô's lemma we showed that the log return, which is the first difference in the log prices, is normally and independently distributed with mean $\mu-\frac{1}{2} \sigma^2$ and variance $\sigma^2$.
+
+Now suppose we fix $\mu$ and $\sigma$ and simulate a sequence $\left\{x_1, x_2, \ldots, x_T\right\}$, where each $x_i$ has mean $\alpha=\mu-\frac{1}{2} \sigma^2$ and variance $\sigma$ as described in the previous section. In a risk neutral world the drift $\mu$ is equal to the risk free rate $r,{ }^{33}$ so (I.5.46) becomes
+
+$$
+x_t=z_t \sigma+r-\frac{1}{2} \sigma^2,
+$$
+
+where $\left\{z_1, z_2, \ldots, z_T\right\}$ are independent standard normal simulations. We suppose that the simulation $\left\{x_1, x_2, \ldots, x_T\right\}$ represents a set of $\log$ returns, i.e.
+
+$$
+x_1=\ln \left(S_1 / S_0\right), \quad x_2=\ln \left(S_2 / S_1\right), \ldots .
+$$
+
+for some sequence of asset prices $\left\{S_0, S_1, S_2, \ldots, S_T\right\}$ and for a fixed $S_0$ which is the current price of the asset. Given a simulation $\left\{x_1, x_2, \ldots, x_T\right\}$ and given $S_0$, we use $x_1$ to obtain the next price as $S_1=\exp \left(x_1\right) S_0$. More generally the consecutive prices of the assets are given by
+
+$$
+S_t=\exp \left(x_t\right) S_{t-1} .
+$$
+
+So this is how we simulate prices that follow a geometric Brownian motion.
+To illustrate (I.5.48) we generate some possible price paths for an asset that follows a geometric Brownian motion with drift $5 \%$ and volatility $20 \%$. Suppose we generate the paths in daily increments over 1 year. Then we must use the daily drift $0.05 / 365=0.000137$ and the daily standard deviation $0.2 / \sqrt{ } 365=0.010468$ in the simulation.
+
+## Simulations on a System of Two Correlated Normal Returns
+
+Correlated simulations are necessary for computing the Monte Carlo VaR of a portfolio, and we shall be drawing on the techniques described in this section very frequently in Volume IV. Suppose we wish to generate two sequences of random draws that represent the returns on correlated assets. For simplicity we shall again assume that each asset's returns are normally distributed with means $\mu_1$ and $\mu_2$, standard deviations $\sigma_1$ and $\sigma_2$ and correlation $\varrho$. We first write down the covariance matrix,
+
+$$
+\mathbf{V}=\left(\begin{array}{cc}
+\sigma_1^2 & \varrho \sigma_1 \sigma_2 \\
+\varrho \sigma_1 \sigma_2 & \sigma_2^2
+\end{array}\right),
+$$
+
+then we find its Cholesky matrix $\mathbf{C}$, i.e. the lower triangular matrix such that $\mathbf{V}=\mathbf{C C}^{\prime}{ }^{35}$ Now we take two independent standard normal simulations, $\mathrm{z}_1$ and $\mathrm{z}_2$, one for each asset and set
+
+$$
+\binom{x_1}{x_2}=\mathbf{C}\binom{\mathrm{z}_1}{\mathrm{z}_2} .
+$$
+
+
+Then $x_1$ and $x_2$ will have the correct standard deviations and correlation, because taking variance of the above gives
+
+$$
+V\binom{x_1}{x_2}=C V\binom{z_1}{z_2} C^{\prime}=C^{\prime} C^{\prime}=V .
+$$
+
+Finally, adding $\mu_1$ to $x_1$ and $\mu_2$ to $x_2$ gives the required result.
