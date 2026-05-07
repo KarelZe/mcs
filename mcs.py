@@ -26,7 +26,6 @@ class CashflowType(Enum):
 
     DEPOSIT = "deposit"
     WITHDRAWAL = "withdrawal"
-    LUMP_SUM = "lump_sum"
 
 
 @dataclass
@@ -36,7 +35,7 @@ class CashflowEvent:
     Attributes:
         year (int): The year of the event (0-indexed).
         amount (float): The monetary amount of the event.
-        type (CashflowType): The type of cashflow (DEPOSIT, WITHDRAWAL, or LUMP_SUM).
+        type (CashflowType): The type of cashflow (DEPOSIT or WITHDRAWAL).
         month (int, optional): The month of the event (0-11). Defaults to 0.
         description (str, optional): A brief description of the event. Defaults to "".
     """
@@ -128,7 +127,6 @@ class SimulationEngine:
 
     Attributes:
         portfolio (Portfolio): The portfolio to simulate.
-        initial_savings (float): Starting balance for the simulation.
         years (int): Number of years to simulate.
         rebalance_months (int, optional): Frequency of formal rebalancing in months. Defaults to 12.
         use_opportunistic_rebalance (bool, optional): Whether to use cashflows to
@@ -138,13 +136,11 @@ class SimulationEngine:
     def __init__(
         self,
         portfolio: Portfolio,
-        initial_savings: float,
         years: int,
         rebalance_months: int = 12,
         use_opportunistic_rebalance: bool = True,
     ):
         self.portfolio = portfolio
-        self.initial_savings = initial_savings
         self.years = years
         self.total_months = years * 12
         self.rebalance_months = rebalance_months
@@ -158,28 +154,6 @@ class SimulationEngine:
             event (CashflowEvent): The event to add.
         """
         self.cashflows.append(event)
-
-    def _get_monthly_cashflow(self, month: int) -> float:
-        """Calculates the net cashflow for a specific month.
-
-        Args:
-            month (int): The current simulation month.
-
-        Returns:
-            float: The net monetary amount to add or subtract.
-        """
-        current_year = month // 12
-        current_month_in_year = month % 12
-        net = 0.0
-
-        for cf in self.cashflows:
-            if cf.year == current_year and cf.month == current_month_in_year:
-                if cf.type == CashflowType.DEPOSIT or cf.type == CashflowType.LUMP_SUM:
-                    net += cf.amount
-                elif cf.type == CashflowType.WITHDRAWAL:
-                    net -= cf.amount
-
-        return net
 
     def _execute_transaction(
         self, asset_values: np.ndarray, amount: float
@@ -242,10 +216,21 @@ class SimulationEngine:
             np.ndarray: A 2D array of shape (num_iters, total_months) containing the
                 total portfolio value over time for every path.
         """
+        # Pre-calculate cashflow schedule for performance
+        cf_schedule = np.zeros(self.total_months)
+        for cf in self.cashflows:
+            m = cf.year * 12 + cf.month
+            if m < self.total_months:
+                if cf.type == CashflowType.DEPOSIT:
+                    cf_schedule[m] += cf.amount
+                elif cf.type == CashflowType.WITHDRAWAL:
+                    cf_schedule[m] -= cf.amount
+
         all_paths = np.zeros((num_iters, self.total_months))
 
         for i in range(num_iters):
-            asset_values = self.initial_savings * self.portfolio.target_weights
+            # Everything starts at zero; initial savings applied via cf_schedule[0]
+            asset_values = np.zeros(len(self.portfolio.assets))
 
             for m in range(self.total_months):
                 # Formal Rebalance
@@ -253,8 +238,8 @@ class SimulationEngine:
                     total_val = np.sum(asset_values)
                     asset_values = total_val * self.portfolio.target_weights
 
-                # Apply Cashflows
-                net_cf = self._get_monthly_cashflow(m)
+                # Apply Cashflows (including initial savings at m=0)
+                net_cf = cf_schedule[m]
                 if net_cf != 0:
                     asset_values = self._execute_transaction(asset_values, net_cf)
 
@@ -278,9 +263,15 @@ if __name__ == "__main__":
     # Initialize engine with opportunistic rebalancing enabled
     engine = SimulationEngine(
         portfolio,
-        initial_savings=1_000_000,
         years=YEARS,
         use_opportunistic_rebalance=True,
+    )
+
+    # Initial savings deposit
+    engine.add_cashflow(
+        CashflowEvent(
+            0, 1_000_000, CashflowType.DEPOSIT, month=0, description="Initial Savings"
+        )
     )
 
     # 10 years of monthly deposits (50k / 12 each)
