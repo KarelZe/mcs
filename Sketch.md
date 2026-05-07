@@ -157,6 +157,8 @@ see handbook on mcs (pp. 45)
 - cuda + python-based monte carlo simulation: https://github.com/ToastierP/monte_carlo_sim/blob/main/MonteCarlo.py
 - useful book: Handbook in Monte Carlo Simulation: Applications in Financial Engineering, Risk Management, and Economics
 - most relevant book: Market Risk Analysis Volume I: Quantitative Methods in Finance
+- monte carlo methods in financial engineering https://www.bauer.uh.edu/spirrong/Monte_Carlo_Methods_In_Financial_Enginee.pdf
+
 
 ## Mac Implementation
 
@@ -215,7 +217,7 @@ for some sequence of asset prices $\left\{S_0, S_1, S_2, \ldots, S_T\right\}$ an
 
 $$
 S_t=\exp \left(x_t\right) S_{t-1} .
-$$
+$$ƒRes
 
 So this is how we simulate prices that follow a geometric Brownian motion.
 To illustrate (I.5.48) we generate some possible price paths for an asset that follows a geometric Brownian motion with drift $5 \%$ and volatility $20 \%$. Suppose we generate the paths in daily increments over 1 year. Then we must use the daily drift $0.05 / 365=0.000137$ and the daily standard deviation $0.2 / \sqrt{ } 365=0.010468$ in the simulation.
